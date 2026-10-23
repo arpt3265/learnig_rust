@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RUST // TICKET OPS · 100 Exercises</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2305070c'/%3E%3Cpath d='M11 23V9h5.5a4.2 4.2 0 0 1 0 8.4H13' stroke='%2322d3ee' stroke-width='2.2' fill='none' stroke-linecap='round'/%3E%3Cpath d='M17 18l4.5 5' stroke='%23a78bfa' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="bg"></div><div id="scan"></div>
+
+<div class="boot" id="boot">
+  <div class="boot-inner">
+    <div class="boot-hero">
+      <div class="boot-eyebrow">RUST TRAINING <b>/</b> 本地真实编译 <b>/</b> <span id="bn-eb-total">98</span> 张工单</div>
+      <h1>RUST // TICKET OPS</h1>
+      <p class="boot-lead">
+        把 <b>100-exercises-to-learn-rust</b> 的 98 道练习做成了工单系统：每道题是一张待处理的工单，
+        你把代码修好、点「运行测试」，浏览器把源码交给<b>你本机的 cargo</b> 真跑一遍 ——
+        真编译、真报错、真通过，不是假动画。
+      </p>
+
+      <div class="boot-term">
+        <div class="bt-hd"><span>boot.log</span><span id="boot-state">INIT</span></div>
+        <div id="bootlog"></div>
+      </div>
+
+      <div class="boot-cta">
+        <button class="btn" id="bootgo" hidden>按 ENTER 接入系统</button>
+      </div>
+      <div class="boot-steps">
+        <span><i>1</i>选区域</span><span><i>2</i>接工单</span><span><i>3</i>拼装或改代码</span><span><i>4</i>跑测试</span>
+      </div>
+
+      <ul class="boot-tips">
+        <li>卡住了先看<b>「给点提示」</b>：先只说方向，再点出 API，最后才给代码骨架。</li>
+      </ul>
+
+      <div class="boot-prog" id="boot-prog" hidden>
+        <div class="bp-hd"><span>你的进度（存在本机浏览器）</span><b id="bp-txt">0 / 98</b></div>
+        <div class="bp-bar"><i id="bp-fill"></i></div>
+      </div>
+    </div>
+
+    <div class="boot-side">
+      <section class="bcard">
+        <div class="bc-hd">题库 <em>THE POOL</em></div>
+        <div class="bc-nums">
+          <div><b id="bn-total">98</b><span>张工单</span></div>
+          <div><b id="bn-ch">8</b><span>个区域</span></div>
+          <div><b id="bn-custom">13</b><span>张定制玩法</span></div>
+          <div><b id="bn-mem">4</b><span>张内存透视</span></div>
+        </div>
+        <div class="bc-tags" id="bn-tags"></div>
+        <p class="bc-p">8 个区域难度递进，每张都带验收清单，全绿才结单。</p>
+      </section>
+
+      <section class="bcard">
+        <div class="bc-hd">四种玩法 <em>HOW TO PLAY</em></div>
+        <ul class="bc-list">
+          <li><b>拼装</b><span>代码被挖空，把下面的芯片拖进空位</span></li>
+          <li><b>开关</b><span>点一下切可见性 / derive，看编译结果怎么变</span></li>
+          <li><b>自由编辑</b><span>带行号的编辑器，自己写</span></li>
+          <li><b>内存透视</b><span>底部第三个 tab：栈、堆、所有权箭头</span></li>
+        </ul>
+      </section>
+
+      <section class="bcard">
+        <div class="bc-hd">来源与致谢 <em>SOURCES</em></div>
+        <ul class="bc-links">
+          <li><a href="https://github.com/mainmatter/100-exercises-to-learn-rust" target="_blank" rel="noopener" title="题目、测试、讲解正文都来自这里">mainmatter/100-exercises<em>GitHub ↗</em></a></li>
+          <li><a href="https://rust-exercises.com" target="_blank" rel="noopener" title="原作者 Mainmatter 的官方课程站">rust-exercises.com<em>官方站 ↗</em></a></li>
+          <li><a href="https://colobu.com/rust100/" target="_blank" rel="noopener" title="中文在线讲解，站内每个「看文档」按钮都跳这里">colobu.com/rust100<em>中文讲解 ↗</em></a></li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <div class="boot-foot">
+    <span>题目与测试逐字取自原仓库，本站只加了一层交互外壳</span>
+    <span id="boot-foot-env">需要 Node 22+ 与本机 Rust 工具链 · 代码只在你机器上编译，不上传</span>
+  </div>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header class="hud">
+    <div class="hud-l">
+      <div class="nav">
+        <button class="nav-btn" id="nav-back" title="后退（Alt + ←）" aria-label="后退" disabled>
+          <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="nav-btn" id="nav-fwd" title="前进（Alt + →）" aria-label="前进" disabled>
+          <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="brand"><span class="dot" id="health-dot"></span>RUST // TICKET OPS <em>100 EXERCISES</em></div>
+    </div>
+    <div class="stats">
+      <div>已完成<b><span id="st-fixed">0</span> / <span id="st-total">0</span></b></div>
+      <div>本地桥<b id="st-bridge">--</b></div>
+      <div>当前<b id="st-cur">星图</b></div>
+    </div>
+    <button class="btn ghost hud-about" id="about-btn" title="本站介绍、题库与来源">关于本站</button>
+  </header>
+
+  <section id="map-screen">
+    <div class="sec-t">SECTOR MAP · 8 个区域 · 98 张工单</div>
+    <div class="sectors" id="sectors"></div>
+    <div class="foot"><span>P0 切片 · 03_ticket_v1 有定制玩法，其余区域暂为自由编辑</span><span id="foot-bridge"></span></div>
+  </section>
+
+  <section id="chapter-screen" hidden>
+    <div class="sec-t" style="margin-bottom:6px">
+      <button class="btn ghost" id="back-map" style="padding:5px 12px">← 星图</button>
+      <span id="ch-title"></span>
+    </div>
+    <div class="rail" id="rail"></div>
+  </section>
+
+  <section id="bench-screen" hidden>
+    <div class="sec-t" style="margin-bottom:0">
+      <button class="btn ghost" id="back-ch" style="padding:5px 12px">← 区域</button>
+      <span id="bc-title"></span>
+    </div>
+    <div class="bench">
+      <div class="bench-main">
+        <div class="panel panel-task">
+          <div class="hl" id="ex-no">TICKET</div>
+          <h2 id="ex-title"></h2>
+          <div class="task" id="ex-task"></div>
+          <div class="hl" style="margin-top:18px">验收清单</div>
+          <div id="accept"></div>
+
+          <div class="hint" id="hint" hidden>
+            <div class="hint-list" id="hint-list"></div>
+            <button class="hint-btn" id="hint-btn">卡住了？先看第 1 级提示</button>
+          </div>
+
+          <div class="doc-row">
+            <button class="btn ghost" id="doc-btn" title="在 colobu.com 打开本节的在线文档">看这一节的文档 ↗</button>
+            <button class="btn ghost" id="doc-local" title="站内速览：不联网也能读这一节">速览</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <div class="panel panel-code">
+            <div class="close-scan" id="close-scan" hidden></div>
+            <div class="close-stamp" id="close-stamp" hidden><b>CLOSED</b><span>工单已结</span></div>
+            <div class="mode-hd">
+              <span class="lbl" id="mode-lbl">MODE</span>
+              <span class="hint" id="mode-hint"></span>
+            </div>
+            <div class="fight" id="fight" hidden></div>
+            <div id="code-wrap">
+              <div class="code" id="code"></div>
+              <div class="chips" id="chips"></div>
+            </div>
+            <div id="editor-wrap" hidden>
+              <div class="editor"><div class="gutter" id="gutter"></div><pre class="ed-hl" id="ed-hl" aria-hidden="true"></pre><textarea id="editor" spellcheck="false"></textarea></div>
+            </div>
+            <div class="banner" id="banner" hidden></div>
+          </div>
+
+          <div class="runbar">
+            <span class="msg" id="run-msg">准备就绪</span>
+            <div class="acts">
+              <button class="btn ghost" id="reset">重置</button>
+              <button class="btn" id="run">运行测试 <span style="opacity:.6">⏎</span></button>
+              <button class="btn ok" id="next" hidden>下一张 →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-bottom" id="panel-bottom">
+        <div class="pb-handle" id="pb-handle" title="拖动调整高度 · 双击折叠"></div>
+        <div class="pb-bar">
+          <button class="pb-tab on" data-tab="term">终端</button>
+          <button class="pb-tab" data-tab="problems">问题<span class="pb-badge" id="pb-badge" hidden>0</span></button>
+          <button class="pb-tab" data-tab="xray" id="pb-tab-xray" hidden>内存</button>
+          <div class="pb-acts">
+            <button class="pb-act" id="term-clear" title="清空终端">清空</button>
+            <button class="pb-act" id="pb-fold" title="折叠 / 展开（Ctrl + `）">折叠</button>
+          </div>
+        </div>
+        <div class="pb-body">
+          <div class="term" id="term"></div>
+          <div class="problems" id="problems" hidden>
+            <div class="pb-empty">运行一次，编译错误和警告会列在这里。</div>
+          </div>
+          <div class="xray" id="xray" hidden></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="drawer" id="drawer">
+  <div class="drawer-hd">
+    <span id="drawer-t">DOC</span>
+    <div class="dh-act">
+      <a class="btn ghost" id="drawer-ext" target="_blank" rel="noopener" title="在 colobu.com 打开对应页面">在线版 ↗</a>
+      <button class="btn ghost" id="drawer-x" style="padding:4px 10px">关闭</button>
+    </div>
+  </div>
+  <div class="drawer-body" id="doc"></div>
+</div>
+<div id="toast"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

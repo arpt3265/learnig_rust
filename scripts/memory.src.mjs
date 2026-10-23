@@ -1,0 +1,265 @@
+// 内存透视的静态数据：4 道题，每题 2-3 步，每步给完整的「栈 + 堆 + 指向」状态。
+// 为什么手写而不去分析 rustc：这几道题的布局是确定的教学事实（24/72/8 字节），
+// 手写既准确又可控；真要通用分析得接 MIR，工程量完全是另一个量级。
+//
+// stack[].kind: owner（持有堆）| moved（已作废）| ref（引用）| plain（纯栈值）
+// fields[].to: 'h1' 指向堆块；'s:t2' 指向栈上的变量
+
+export const MEMORY = {
+  '03_ticket_v1/06_ownership': {
+    title: 'Ticket 的所有权',
+    steps: [
+      {
+        label: 'Ticket::new("A title", "A description", "To-Do")',
+        note: 'Ticket 在栈上占 72 字节 —— 三个 String，每个 24 字节（指针 + 长度 + 容量）。字符本身全在堆上，栈里只有三个「门牌号」。',
+        stack: [
+          {
+            name: 'ticket',
+            type: 'Ticket',
+            size: '72 B',
+            kind: 'owner',
+            fields: [
+              { k: 'title', v: 'ptr 0x9a10 · len 7 · cap 7', to: 'h1' },
+              { k: 'description', v: 'ptr 0x9b40 · len 13 · cap 13', to: 'h2' },
+              { k: 'status', v: 'ptr 0x9c80 · len 5 · cap 5', to: 'h3' },
+            ],
+          },
+        ],
+        heap: [
+          { id: 'h1', addr: '0x9a10', bytes: '7 B', value: '"A title"' },
+          { id: 'h2', addr: '0x9b40', bytes: '13 B', value: '"A description"' },
+          { id: 'h3', addr: '0x9c80', bytes: '5 B', value: '"To-Do"' },
+        ],
+      },
+      {
+        label: 'let t2 = ticket;',
+        note: '移动就是把这 72 字节按位复制到 t2，然后 ticket 立刻作废。堆上一个字节都没动 —— 不是深拷贝，只是换了个主人。',
+        stack: [
+          {
+            name: 'ticket',
+            type: 'Ticket',
+            size: '72 B',
+            kind: 'moved',
+            fields: [
+              { k: 'title', v: '已失效', to: 'h1', broken: true },
+              { k: 'description', v: '已失效', to: 'h2', broken: true },
+              { k: 'status', v: '已失效', to: 'h3', broken: true },
+            ],
+          },
+          {
+            name: 't2',
+            type: 'Ticket',
+            size: '72 B',
+            kind: 'owner',
+            fields: [
+              { k: 'title', v: 'ptr 0x9a10 · len 7 · cap 7', to: 'h1' },
+              { k: 'description', v: 'ptr 0x9b40 · len 13 · cap 13', to: 'h2' },
+              { k: 'status', v: 'ptr 0x9c80 · len 5 · cap 5', to: 'h3' },
+            ],
+          },
+        ],
+        heap: [
+          { id: 'h1', addr: '0x9a10', bytes: '7 B', value: '"A title"' },
+          { id: 'h2', addr: '0x9b40', bytes: '13 B', value: '"A description"' },
+          { id: 'h3', addr: '0x9c80', bytes: '5 B', value: '"To-Do"' },
+        ],
+      },
+      {
+        label: '改成 fn title(&self) -> &str',
+        note: '这一步是这道题的答案：拿 &self 就只是借用。栈上多出 8 字节的引用，指回 t2 自己在栈上的地址，堆完全没有参与。',
+        stack: [
+          {
+            name: 't2',
+            type: 'Ticket',
+            size: '72 B',
+            kind: 'owner',
+            fields: [
+              { k: 'title', v: 'ptr 0x9a10 · len 7 · cap 7', to: 'h1' },
+              { k: 'description', v: 'ptr 0x9b40 · len 13 · cap 13', to: 'h2' },
+              { k: 'status', v: 'ptr 0x9c80 · len 5 · cap 5', to: 'h3' },
+            ],
+          },
+          {
+            name: 'self',
+            type: '&Ticket',
+            size: '8 B',
+            kind: 'ref',
+            fields: [{ k: '地址', v: '0x7ffe_d240（t2 的栈地址）', to: 's:t2' }],
+          },
+        ],
+        heap: [
+          { id: 'h1', addr: '0x9a10', bytes: '7 B', value: '"A title"' },
+          { id: 'h2', addr: '0x9b40', bytes: '13 B', value: '"A description"' },
+          { id: 'h3', addr: '0x9c80', bytes: '5 B', value: '"To-Do"' },
+        ],
+      },
+    ],
+  },
+
+  '03_ticket_v1/08_stack': {
+    title: '栈上的三种整数',
+    steps: [
+      {
+        label: 'let a: u16 = 7; let b: i32 = -1; let c = true;',
+        note: '三个值全在栈上，没有任何堆分配。它们的大小由类型决定，和值本身大小无关 —— 7 和 65535 都占 2 字节。',
+        stack: [
+          { name: 'a', type: 'u16', size: '2 B', kind: 'plain', fields: [{ k: '值', v: '7' }] },
+          { name: 'b', type: 'i32', size: '4 B', kind: 'plain', fields: [{ k: '值', v: '-1' }] },
+          { name: 'c', type: 'bool', size: '1 B', kind: 'plain', fields: [{ k: '值', v: 'true' }] },
+        ],
+        heap: [],
+      },
+      {
+        label: 'size_of::<u16>() / <i32>() / <bool>()',
+        note: '答案就是 2 / 4 / 1。u16 = 2 个字节 = 16 位；i32 = 4 个字节 = 32 位；bool 只用一个字节里的一位，但 size_of 仍然报 1。',
+        stack: [
+          { name: 'a', type: 'u16', size: '2 B', kind: 'plain', fields: [{ k: '答案', v: '2' }] },
+          { name: 'b', type: 'i32', size: '4 B', kind: 'plain', fields: [{ k: '答案', v: '4' }] },
+          { name: 'c', type: 'bool', size: '1 B', kind: 'plain', fields: [{ k: '答案', v: '1' }] },
+        ],
+        heap: [],
+      },
+    ],
+  },
+
+  '03_ticket_v1/09_heap': {
+    title: '堆上的字符串',
+    steps: [
+      {
+        label: 'let s = String::from("hello");',
+        note: 'String 在栈上永远只占 24 字节（指针 8 + 长度 8 + 容量 8），和内容多长无关。5 个字符的 "hello" 落在堆上。',
+        stack: [
+          {
+            name: 's',
+            type: 'String',
+            size: '24 B',
+            kind: 'owner',
+            fields: [{ k: 'ptr', v: '0x9a10 · len 5 · cap 5', to: 'h1' }],
+          },
+        ],
+        heap: [{ id: 'h1', addr: '0x9a10', bytes: '5 B', value: '"hello"' }],
+      },
+      {
+        label: 'size_of::<String>()',
+        note: '24。这道题最容易答错的地方是「字符串多长就占多大」—— 那是堆的大小，不是 String 大小。',
+        stack: [
+          {
+            name: 's',
+            type: 'String',
+            size: '24 B',
+            kind: 'owner',
+            fields: [{ k: '答案', v: '24（ptr + len + cap）', to: 'h1' }],
+          },
+        ],
+        heap: [{ id: 'h1', addr: '0x9a10', bytes: '5 B', value: '"hello"' }],
+      },
+      {
+        label: 'size_of::<Ticket>()',
+        note: '72 = 3 × 24。Ticket 里三个 String，每个都是 24 字节的门牌，加起来正好 72 —— 所以这道题「直觉的答案」碰巧是对的。',
+        stack: [
+          {
+            name: 'ticket',
+            type: 'Ticket',
+            size: '72 B',
+            kind: 'owner',
+            fields: [
+              { k: 'title', v: 'ptr 0x9a10 · len 7 · cap 7', to: 'h1' },
+              { k: 'description', v: 'ptr 0x9b40 · len 13 · cap 13', to: 'h2' },
+              { k: 'status', v: 'ptr 0x9c80 · len 5 · cap 5', to: 'h3' },
+            ],
+          },
+        ],
+        heap: [
+          { id: 'h1', addr: '0x9a10', bytes: '7 B', value: '"A title"' },
+          { id: 'h2', addr: '0x9b40', bytes: '13 B', value: '"A description"' },
+          { id: 'h3', addr: '0x9c80', bytes: '5 B', value: '"To-Do"' },
+        ],
+      },
+    ],
+  },
+
+  '03_ticket_v1/10_references_in_memory': {
+    title: '引用只是一个地址',
+    steps: [
+      {
+        label: 'let t = Ticket::new(...)',
+        note: '先记住 baseline：Ticket 在栈上 72 字节，三块堆内存。',
+        stack: [
+          {
+            name: 't',
+            type: 'Ticket',
+            size: '72 B',
+            kind: 'owner',
+            fields: [
+              { k: 'title', v: 'ptr 0x9a10 · len 7 · cap 7', to: 'h1' },
+              { k: 'description', v: 'ptr 0x9b40 · len 13 · cap 13', to: 'h2' },
+              { k: 'status', v: 'ptr 0x9c80 · len 5 · cap 5', to: 'h3' },
+            ],
+          },
+        ],
+        heap: [
+          { id: 'h1', addr: '0x9a10', bytes: '7 B', value: '"A title"' },
+          { id: 'h2', addr: '0x9b40', bytes: '13 B', value: '"A description"' },
+          { id: 'h3', addr: '0x9c80', bytes: '5 B', value: '"To-Do"' },
+        ],
+      },
+      {
+        label: 'let r: &Ticket = &t;',
+        note: '引用不复制 Ticket，只是在栈上多一个 8 字节的地址，指向 t 所在的位置。注意箭头指向的是「栈上的 t」，不是堆里的字符串。',
+        stack: [
+          {
+            name: 't',
+            type: 'Ticket',
+            size: '72 B',
+            kind: 'owner',
+            fields: [
+              { k: 'title', v: 'ptr 0x9a10 · len 7 · cap 7', to: 'h1' },
+              { k: 'description', v: 'ptr 0x9b40 · len 13 · cap 13', to: 'h2' },
+              { k: 'status', v: 'ptr 0x9c80 · len 5 · cap 5', to: 'h3' },
+            ],
+          },
+          {
+            name: 'r',
+            type: '&Ticket',
+            size: '8 B',
+            kind: 'ref',
+            fields: [{ k: '地址', v: '0x7ffe_d240（t 的栈地址）', to: 's:t' }],
+          },
+        ],
+        heap: [
+          { id: 'h1', addr: '0x9a10', bytes: '7 B', value: '"A title"' },
+          { id: 'h2', addr: '0x9b40', bytes: '13 B', value: '"A description"' },
+          { id: 'h3', addr: '0x9c80', bytes: '5 B', value: '"To-Do"' },
+        ],
+      },
+      {
+        label: 'size_of::<&u16>() / <&mut u64>() / <&Ticket>()',
+        note: '三个答案都是 8。引用的大小只跟「机器的地址宽度」有关，跟它指向什么类型完全无关 —— 这是这道题唯一要记住的事。',
+        stack: [
+          {
+            name: '&u16',
+            type: '引用',
+            size: '8 B',
+            kind: 'plain',
+            fields: [{ k: '答案', v: '8' }],
+          },
+          {
+            name: '&mut u64',
+            type: '引用',
+            size: '8 B',
+            kind: 'plain',
+            fields: [{ k: '答案', v: '8' }],
+          },
+          {
+            name: '&Ticket',
+            type: '引用',
+            size: '8 B',
+            kind: 'plain',
+            fields: [{ k: '答案', v: '8' }],
+          },
+        ],
+        heap: [],
+      },
+    ],
+  },
+};

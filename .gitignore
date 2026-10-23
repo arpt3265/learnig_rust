@@ -1,2 +1,5 @@
 target/
 exercises/progress.db
+
+.workbuddy/
+node_modules/

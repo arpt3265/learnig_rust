@@ -1,0 +1,15 @@
+{
+  "name": "ticket-ops",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "把 100-exercises-to-learn-rust 变成可交互的工单系统：拼装 / 开关 / 编辑器 + 真实 cargo test",
+  "scripts": {
+    "content": "node scripts/build-content.mjs",
+    "map": "node scripts/fetch-doc-map.mjs",
+    "scenarios": "node scripts/build-scenarios.mjs",
+    "build": "node scripts/build-content.mjs && node scripts/build-scenarios.mjs",
+    "dev": "node bridge/server.mjs",
+    "dev:fake": "node bridge/server.mjs --fake"
+  }
+}

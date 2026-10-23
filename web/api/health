@@ -1,0 +1,6 @@
+{
+  "ok": false,
+  "fake": false,
+  "demo": true,
+  "note": "在线演示版：没有本地桥。拼装题的判定在前端按空位内容完成；真实 cargo 编译请在本地运行 node bridge/server.mjs"
+}
